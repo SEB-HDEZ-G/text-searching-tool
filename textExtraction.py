@@ -6,36 +6,30 @@ programming & script files (treat as plain text)
 .html, .py, .js, .java, .c, .cpp, .rb, .sh
 
 office documents
-file types: .docx, .xlsx, .pptx, .ppt
+file types: .docx, .xlsx, .pptx
 
 pdf files
 file type: .pdf
 """
 
-# imports ------------------------------------------------------------
+# Imports ------------------------------------------------------------
 
 from docx import Document
 from pptx import Presentation
 import openpyxl
 import pdfplumber
+import pytesseract
+from pdf2image import convert_from_path
 
-# OCR for scanned PDFs
-try:
-    import pytesseract
-    from pdf2image import convert_from_path
-    OCR_AVAILABLE = True
-except ImportError:
-    OCR_AVAILABLE = False
+# Functions ------------------------------------------------------------
 
-# functions ------------------------------------------------------------
-
-# plain text and programming files text extraction
+# Plain text and programming files text extraction
 def extractPlainText(filePath):
     with open(filePath, 'r', encoding='utf-8') as file:
         extractedText = file.read()
         return extractedText
     
-# office documents text extraction
+# Office documents text extraction
 def extractOfficeText(filePath):
     if filePath.endswith('.docx'):
         doc = Document(filePath)
@@ -121,39 +115,35 @@ def extractOfficeText(filePath):
     else:
         raise ValueError("Unsupported office document format")
     
-# pdf text extraction
+# PDF text extraction
 def extractPDFText(filePath):
-    text_parts = []
+    textParts = []
     
-    # Try pdfplumber for text and table extraction
+    # Using pdfplumber for regular digital PDFs
     with pdfplumber.open(filePath) as pdf:
         for page in pdf.pages:
-            # Extract regular text
-            page_text = page.extract_text()
-            if page_text:
-                text_parts.append(page_text)
+            # regular text
+            pageText = page.extract_text()
+            if pageText:
+                textParts.append(pageText)
             
-            # Extract text from tables
+            # Text from tables
             tables = page.extract_tables()
             for table in tables:
                 for row in table:
                     if row:
-                        # Join non-None cells in each row
-                        row_text = ' '.join([str(cell) for cell in row if cell])
-                        text_parts.append(row_text)
-    
-    # If no text was extracted and OCR is available, try OCR
-    if not text_parts and OCR_AVAILABLE:
-        try:
-            images = convert_from_path(filePath)
-            for image in images:
-                ocr_text = pytesseract.image_to_string(image)
-                if ocr_text.strip():
-                    text_parts.append(ocr_text)
-        except Exception as e:
-            # OCR failed, return empty or raise
-            pass
-    extractedText = '\n'.join(text_parts)
+                        # Join text from non-empty cells in each row
+                        rowText = ' '.join([cell for cell in row if cell])
+                        textParts.append(rowText)
+                        
+    # Using OCR for scanned or image-based PDFs
+    if not textParts:
+        images = convert_from_path(filePath)
+        for image in images:
+            ocrText = pytesseract.image_to_string(image)
+            textParts.append(ocrText)
+
+    extractedText = ''.join(textParts)
     return extractedText
 
 def chooseExtractionMethod(filePath):
@@ -167,15 +157,15 @@ def chooseExtractionMethod(filePath):
     else:
         raise ValueError("Unsupported file format for extraction")
 
-# testing --------------------------------------------------------------
+# Testing --------------------------------------------------------------
 
-testingKey = 17  # 0-17
+"""testingKey = 1  # 0-17
 
-"""
+
 0: .txt, 1: .csv, 2: .json, 3: .yaml, 4: .xml, 5: .md, 6: .html, 7: .py, 
 8: .js, 9: .java, 10: .c, 11: .cpp, 12: .rb, 13: .sh, 14: .docx, 
 15: .xlsx, 16: .pptx, 17: .pdf
-"""
+
 fileFormats = ['.txt', '.csv', '.json', '.yaml', '.xml', '.md',
                '.html', '.py', '.js', '.java', '.c', '.cpp', '.rb', '.sh',
                '.docx', '.xlsx', '.pptx', '.pdf']
@@ -187,3 +177,5 @@ print("=" * 60)
 
 extractedText = chooseExtractionMethod(filePath)
 print(extractedText)
+
+print(extractPDFText('testFiles/test2.pdf'))"""
